@@ -7,6 +7,8 @@ from flask import Flask, abort, g, redirect, render_template, request, url_for
 
 CATEGORIES = ("أجهزة", "برامج", "شبكة", "أخرى")
 FIELD_LIMITS = {"title": 120, "description": 2000, "requester_name": 80}
+NEXT_STATUS = {"جديد": "قيد المعالجة", "قيد المعالجة": "تم الحل"}
+STATUS_ERROR = "انتقال الحالة غير متاح."
 
 
 def create_app(test_config=None):
@@ -105,6 +107,12 @@ def create_app(test_config=None):
 
     @app.get("/tickets/<int:ticket_id>")
     def ticket_detail(ticket_id):
+        ticket = load_ticket(ticket_id)
+        return render_template(
+            "ticket_detail.html", ticket=ticket, next_status=NEXT_STATUS.get(ticket["status"])
+        )
+
+    def load_ticket(ticket_id):
         ticket = get_db().execute(
             "SELECT id, title, description, category, requester_name, status, created_at "
             "FROM tickets WHERE id = ?",
@@ -112,7 +120,35 @@ def create_app(test_config=None):
         ).fetchone()
         if ticket is None:
             abort(404)
-        return render_template("ticket_detail.html", ticket=ticket)
+        return ticket
+
+    @app.post("/tickets/<int:ticket_id>/status")
+    def ticket_status(ticket_id):
+        ticket = load_ticket(ticket_id)
+        next_status = NEXT_STATUS.get(ticket["status"])
+        if next_status is None or request.form.get("next_status") != next_status:
+            return render_template(
+                "ticket_detail.html",
+                ticket=ticket,
+                next_status=next_status,
+                status_error=STATUS_ERROR,
+            ), 400
+
+        cursor = get_db().execute(
+            "UPDATE tickets SET status = ? WHERE id = ? AND status = ?",
+            (next_status, ticket_id, ticket["status"]),
+        )
+        get_db().commit()
+        if cursor.rowcount != 1:
+            ticket = load_ticket(ticket_id)
+            return render_template(
+                "ticket_detail.html",
+                ticket=ticket,
+                next_status=NEXT_STATUS.get(ticket["status"]),
+                status_error=STATUS_ERROR,
+            ), 409
+
+        return redirect(url_for("ticket_detail", ticket_id=ticket_id), code=303)
 
     return app
 

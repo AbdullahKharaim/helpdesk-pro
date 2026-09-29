@@ -27,6 +27,11 @@ class TicketTests(unittest.TestCase):
         with closing(sqlite3.connect(self.database)) as db:
             return db.execute("SELECT COUNT(*) FROM tickets").fetchone()[0]
 
+    def create_ticket(self):
+        response = self.client.post("/tickets/new", data=VALID_TICKET)
+        self.assertEqual(response.status_code, 302)
+        return response.headers["Location"]
+
     def test_create_and_reopen(self):
         empty = self.client.get("/")
         self.assertIn("لا توجد بلاغات".encode(), empty.data)
@@ -82,6 +87,78 @@ class TicketTests(unittest.TestCase):
         with closing(sqlite3.connect(self.database)) as db:
             title = db.execute("SELECT title FROM tickets").fetchone()[0]
         self.assertEqual(title, "س" * 120)
+
+    def test_status_advances_one_step_at_a_time(self):
+        detail_url = self.create_ticket()
+        status_url = detail_url + "/status"
+
+        new_detail = self.client.get(detail_url)
+        self.assertIn('name="next_status" value="قيد المعالجة"'.encode(), new_detail.data)
+        self.assertNotIn("الانتقال إلى تم الحل".encode(), new_detail.data)
+
+        first = self.client.post(status_url, data={"next_status": "قيد المعالجة"})
+        self.assertEqual(first.status_code, 303)
+        self.assertEqual(first.headers["Location"], detail_url)
+        processing_detail = self.client.get(detail_url)
+        self.assertIn('name="next_status" value="تم الحل"'.encode(), processing_detail.data)
+        self.assertNotIn("الانتقال إلى قيد المعالجة".encode(), processing_detail.data)
+        self.assertIn("قيد المعالجة".encode(), self.client.get("/").data)
+
+        second = self.client.post(status_url, data={"next_status": "تم الحل"})
+        self.assertEqual(second.status_code, 303)
+        solved_detail = self.client.get(detail_url)
+        self.assertIn("تم الحل".encode(), solved_detail.data)
+        self.assertNotIn('name="next_status"'.encode(), solved_detail.data)
+        self.assertIn("تم الحل".encode(), self.client.get("/").data)
+
+    def test_status_persists_after_reopening_app(self):
+        detail_url = self.create_ticket()
+        status_url = detail_url + "/status"
+        self.client.post(status_url, data={"next_status": "قيد المعالجة"})
+
+        reopened = create_app({"TESTING": True, "DATABASE": self.database})
+        reopened_client = reopened.test_client()
+        self.assertIn("قيد المعالجة".encode(), reopened_client.get(detail_url).data)
+        self.assertIn("قيد المعالجة".encode(), reopened_client.get("/").data)
+        with closing(sqlite3.connect(self.database)) as db:
+            status = db.execute("SELECT status FROM tickets WHERE id = 1").fetchone()[0]
+        self.assertEqual(status, "قيد المعالجة")
+
+        reopened_client.post(status_url, data={"next_status": "تم الحل"})
+        reopened_again = create_app({"TESTING": True, "DATABASE": self.database})
+        self.assertIn("تم الحل".encode(), reopened_again.test_client().get(detail_url).data)
+        self.assertIn("تم الحل".encode(), reopened_again.test_client().get("/").data)
+
+    def test_rejects_invalid_status_transition(self):
+        detail_url = self.create_ticket()
+        status_url = detail_url + "/status"
+        for target in ("تم الحل", "جديد", ""):
+            with self.subTest(target=target):
+                response = self.client.post(status_url, data={"next_status": target})
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("انتقال الحالة غير متاح.".encode(), response.data)
+                with closing(sqlite3.connect(self.database)) as db:
+                    status = db.execute("SELECT status FROM tickets WHERE id = 1").fetchone()[0]
+                self.assertEqual(status, "جديد")
+
+        self.client.post(status_url, data={"next_status": "قيد المعالجة"})
+        repeated = self.client.post(status_url, data={"next_status": "قيد المعالجة"})
+        self.assertEqual(repeated.status_code, 400)
+        self.assertIn("انتقال الحالة غير متاح.".encode(), repeated.data)
+
+    def test_rejects_transition_after_solved(self):
+        detail_url = self.create_ticket()
+        status_url = detail_url + "/status"
+        self.client.post(status_url, data={"next_status": "قيد المعالجة"})
+        self.client.post(status_url, data={"next_status": "تم الحل"})
+
+        response = self.client.post(status_url, data={"next_status": "جديد"})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("انتقال الحالة غير متاح.".encode(), response.data)
+        self.assertNotIn('name="next_status"'.encode(), response.data)
+        with closing(sqlite3.connect(self.database)) as db:
+            status = db.execute("SELECT status FROM tickets WHERE id = 1").fetchone()[0]
+        self.assertEqual(status, "تم الحل")
 
 
 if __name__ == "__main__":

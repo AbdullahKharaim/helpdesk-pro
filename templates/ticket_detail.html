@@ -10,5 +10,12 @@
     <dt>الحالة</dt><dd>{{ ticket.status }}</dd>
     <dt>تاريخ الإنشاء (UTC)</dt><dd>{{ ticket.created_at }}</dd>
   </dl>
+  {% if status_error %}<p class="error" role="alert">{{ status_error }}</p>{% endif %}
+  {% if next_status %}
+    <form method="post" action="{{ url_for('ticket_status', ticket_id=ticket.id) }}">
+      <input type="hidden" name="next_status" value="{{ next_status }}">
+      <button type="submit">الانتقال إلى {{ next_status }}</button>
+    </form>
+  {% endif %}
   <p><a href="{{ url_for('ticket_list') }}">العودة إلى البلاغات</a></p>
 {% endblock %}
