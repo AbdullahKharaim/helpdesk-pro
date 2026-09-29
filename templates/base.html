@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}HelpDesk Pro{% endblock %}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; line-height: 1.6; max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #17202a; }
+    a { color: #075aa5; }
+    .button, button { display: inline-block; padding: .55rem .9rem; background: #075aa5; color: white; border: 0; border-radius: .3rem; text-decoration: none; cursor: pointer; font: inherit; }
+    .actions { display: flex; gap: 1rem; align-items: center; margin-top: 1.5rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { text-align: right; border-bottom: 1px solid #d4dce4; padding: .65rem; }
+    .table-wrap { overflow-x: auto; }
+    label { display: block; font-weight: 600; margin-bottom: .25rem; }
+    input, textarea, select { box-sizing: border-box; width: 100%; padding: .55rem; font: inherit; border: 1px solid #8795a1; border-radius: .25rem; }
+    textarea { min-height: 8rem; }
+    .field { margin: 1rem 0; }
+    .error { color: #a51919; margin: .3rem 0 0; }
+    [aria-invalid="true"] { border-color: #a51919; }
+    .empty { background: #f2f6fa; padding: 1rem; border-radius: .3rem; }
+    dt { font-weight: 600; margin-top: .8rem; }
+    dd { margin: .2rem 0 0; }
+    .description { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <header><a href="{{ url_for('ticket_list') }}">HelpDesk Pro</a></header>
+  <main>{% block content %}{% endblock %}</main>
+</body>
+</html>

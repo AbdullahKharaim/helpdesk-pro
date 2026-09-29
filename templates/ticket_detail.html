@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}بلاغ رقم {{ ticket.id }} — HelpDesk Pro{% endblock %}
+{% block content %}
+  <h1>بلاغ رقم {{ ticket.id }}</h1>
+  <dl>
+    <dt>العنوان</dt><dd>{{ ticket.title }}</dd>
+    <dt>الوصف</dt><dd class="description">{{ ticket.description }}</dd>
+    <dt>التصنيف</dt><dd>{{ ticket.category }}</dd>
+    <dt>اسم مقدم الطلب التجريبي</dt><dd>{{ ticket.requester_name }}</dd>
+    <dt>الحالة</dt><dd>{{ ticket.status }}</dd>
+    <dt>تاريخ الإنشاء (UTC)</dt><dd>{{ ticket.created_at }}</dd>
+  </dl>
+  <p><a href="{{ url_for('ticket_list') }}">العودة إلى البلاغات</a></p>
+{% endblock %}
