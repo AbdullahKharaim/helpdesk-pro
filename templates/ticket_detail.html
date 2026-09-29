@@ -17,5 +17,26 @@
       <button type="submit">الانتقال إلى {{ next_status }}</button>
     </form>
   {% endif %}
+  <section aria-labelledby="notes-heading">
+    <h2 id="notes-heading">ملاحظات المعالجة</h2>
+    <form method="post" action="{{ url_for('ticket_note', ticket_id=ticket.id) }}" novalidate>
+      <label for="note-body">ملاحظة جديدة</label>
+      <textarea id="note-body" name="body" maxlength="1000" aria-invalid="{{ 'true' if note_error else 'false' }}"{% if note_error %} aria-describedby="note-error"{% endif %}>{{ note_body }}</textarea>
+      {% if note_error %}<p class="error" id="note-error" role="alert">{{ note_error }}</p>{% endif %}
+      <button type="submit">حفظ الملاحظة</button>
+    </form>
+    {% if notes %}
+      <ol>
+      {% for note in notes %}
+        <li>
+          <p>ملاحظة رقم {{ note.id }} — <time datetime="{{ note.created_at }}">{{ note.created_at }} (UTC)</time></p>
+          <p class="description">{{ note.body }}</p>
+        </li>
+      {% endfor %}
+      </ol>
+    {% else %}
+      <p>لا توجد ملاحظات معالجة بعد.</p>
+    {% endif %}
+  </section>
   <p><a href="{{ url_for('ticket_list') }}">العودة إلى البلاغات</a></p>
 {% endblock %}

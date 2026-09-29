@@ -27,6 +27,10 @@ class TicketTests(unittest.TestCase):
         with closing(sqlite3.connect(self.database)) as db:
             return db.execute("SELECT COUNT(*) FROM tickets").fetchone()[0]
 
+    def count_notes(self):
+        with closing(sqlite3.connect(self.database)) as db:
+            return db.execute("SELECT COUNT(*) FROM ticket_notes").fetchone()[0]
+
     def create_ticket(self):
         response = self.client.post("/tickets/new", data=VALID_TICKET)
         self.assertEqual(response.status_code, 302)
@@ -159,6 +163,89 @@ class TicketTests(unittest.TestCase):
         with closing(sqlite3.connect(self.database)) as db:
             status = db.execute("SELECT status FROM tickets WHERE id = 1").fetchone()[0]
         self.assertEqual(status, "تم الحل")
+
+    def test_note_persists_after_reopening_app(self):
+        detail_url = self.create_ticket()
+        response = self.client.post(detail_url + "/notes", data={"body": "  فحص تجريبي  "})
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers["Location"], detail_url)
+
+        reopened = create_app({"TESTING": True, "DATABASE": self.database})
+        detail = reopened.test_client().get(detail_url)
+        self.assertIn("فحص تجريبي".encode(), detail.data)
+        self.assertIn("ملاحظة رقم 1".encode(), detail.data)
+        with closing(sqlite3.connect(self.database)) as db:
+            note_id, ticket_id, body, created_at = db.execute(
+                "SELECT id, ticket_id, body, created_at FROM ticket_notes"
+            ).fetchone()
+        self.assertEqual((note_id, ticket_id, body), (1, 1, "فحص تجريبي"))
+        self.assertTrue(created_at.endswith("+00:00"))
+
+    def test_notes_are_oldest_first_and_belong_to_their_ticket(self):
+        first_ticket = self.create_ticket()
+        for body in ("الملاحظة الأولى", "الملاحظة الثانية", "الملاحظة الثالثة"):
+            response = self.client.post(first_ticket + "/notes", data={"body": body})
+            self.assertEqual(response.status_code, 303)
+
+        second_ticket = self.create_ticket()
+        self.client.post(second_ticket + "/notes", data={"body": "ملاحظة بلاغ آخر"})
+
+        first_page = self.client.get(first_ticket).get_data(as_text=True)
+        positions = [first_page.index(body) for body in (
+            "الملاحظة الأولى", "الملاحظة الثانية", "الملاحظة الثالثة"
+        )]
+        self.assertEqual(positions, sorted(positions))
+        self.assertNotIn("ملاحظة بلاغ آخر", first_page)
+        self.assertIn("ملاحظة بلاغ آخر".encode(), self.client.get(second_ticket).data)
+
+    def test_rejects_empty_and_long_notes_without_losing_input(self):
+        detail_url = self.create_ticket()
+        for body, error in (
+            ("   ", "اكتب ملاحظة المعالجة."),
+            ("س" * 1001, "يجب ألا تتجاوز الملاحظة 1000 حرف."),
+        ):
+            with self.subTest(body_length=len(body)):
+                response = self.client.post(detail_url + "/notes", data={"body": body})
+                self.assertEqual(response.status_code, 400)
+                page = response.get_data(as_text=True)
+                self.assertIn(error, page)
+                self.assertIn(">" + body + "</textarea>", page)
+                self.assertEqual(self.count_notes(), 0)
+
+        accepted = self.client.post(
+            detail_url + "/notes", data={"body": "  " + "س" * 1000 + "  "}
+        )
+        self.assertEqual(accepted.status_code, 303)
+        with closing(sqlite3.connect(self.database)) as db:
+            body = db.execute("SELECT body FROM ticket_notes").fetchone()[0]
+        self.assertEqual(body, "س" * 1000)
+
+    def test_can_add_note_after_ticket_is_solved(self):
+        detail_url = self.create_ticket()
+        status_url = detail_url + "/status"
+        self.client.post(status_url, data={"next_status": "قيد المعالجة"})
+        self.client.post(status_url, data={"next_status": "تم الحل"})
+
+        response = self.client.post(detail_url + "/notes", data={"body": "تمت المعالجة"})
+        self.assertEqual(response.status_code, 303)
+        detail = self.client.get(detail_url)
+        self.assertIn("تم الحل".encode(), detail.data)
+        self.assertIn("تمت المعالجة".encode(), detail.data)
+        self.assertEqual(self.count_notes(), 1)
+
+    def test_existing_ticket_survives_notes_table_initialization(self):
+        detail_url = self.create_ticket()
+        with closing(sqlite3.connect(self.database)) as db:
+            db.execute("DROP TABLE ticket_notes")
+            db.commit()
+
+        upgraded = create_app({"TESTING": True, "DATABASE": self.database})
+        upgraded_client = upgraded.test_client()
+        self.assertIn(VALID_TICKET["title"].encode(), upgraded_client.get(detail_url).data)
+        response = upgraded_client.post(detail_url + "/notes", data={"body": "بعد التحديث"})
+        self.assertEqual(response.status_code, 303)
+        self.assertIn("بعد التحديث".encode(), upgraded_client.get(detail_url).data)
+        self.assertEqual(self.count_tickets(), 1)
 
 
 if __name__ == "__main__":

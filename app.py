@@ -7,6 +7,7 @@ from flask import Flask, abort, g, redirect, render_template, request, url_for
 
 CATEGORIES = ("أجهزة", "برامج", "شبكة", "أخرى")
 FIELD_LIMITS = {"title": 120, "description": 2000, "requester_name": 80}
+NOTE_LIMIT = 1000
 NEXT_STATUS = {"جديد": "قيد المعالجة", "قيد المعالجة": "تم الحل"}
 STATUS_ERROR = "انتقال الحالة غير متاح."
 
@@ -23,6 +24,7 @@ def create_app(test_config=None):
         if "db" not in g:
             g.db = sqlite3.connect(app.config["DATABASE"])
             g.db.row_factory = sqlite3.Row
+            g.db.execute("PRAGMA foreign_keys = ON")
         return g.db
 
     @app.teardown_appcontext
@@ -41,6 +43,16 @@ def create_app(test_config=None):
                 category TEXT NOT NULL CHECK (category IN ('أجهزة', 'برامج', 'شبكة', 'أخرى')),
                 requester_name TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'جديد' CHECK (status IN ('جديد', 'قيد المعالجة', 'تم الحل')),
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        get_db().execute(
+            """
+            CREATE TABLE IF NOT EXISTS ticket_notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticket_id INTEGER NOT NULL REFERENCES tickets(id),
+                body TEXT NOT NULL,
                 created_at TEXT NOT NULL
             )
             """
@@ -108,9 +120,7 @@ def create_app(test_config=None):
     @app.get("/tickets/<int:ticket_id>")
     def ticket_detail(ticket_id):
         ticket = load_ticket(ticket_id)
-        return render_template(
-            "ticket_detail.html", ticket=ticket, next_status=NEXT_STATUS.get(ticket["status"])
-        )
+        return render_ticket_detail(ticket)
 
     def load_ticket(ticket_id):
         ticket = get_db().execute(
@@ -122,17 +132,28 @@ def create_app(test_config=None):
             abort(404)
         return ticket
 
+    def render_ticket_detail(ticket, note_body="", note_error=None, status_error=None):
+        notes = get_db().execute(
+            "SELECT id, body, created_at FROM ticket_notes "
+            "WHERE ticket_id = ? ORDER BY created_at ASC, id ASC",
+            (ticket["id"],),
+        ).fetchall()
+        return render_template(
+            "ticket_detail.html",
+            ticket=ticket,
+            next_status=NEXT_STATUS.get(ticket["status"]),
+            notes=notes,
+            note_body=note_body,
+            note_error=note_error,
+            status_error=status_error,
+        )
+
     @app.post("/tickets/<int:ticket_id>/status")
     def ticket_status(ticket_id):
         ticket = load_ticket(ticket_id)
         next_status = NEXT_STATUS.get(ticket["status"])
         if next_status is None or request.form.get("next_status") != next_status:
-            return render_template(
-                "ticket_detail.html",
-                ticket=ticket,
-                next_status=next_status,
-                status_error=STATUS_ERROR,
-            ), 400
+            return render_ticket_detail(ticket, status_error=STATUS_ERROR), 400
 
         cursor = get_db().execute(
             "UPDATE tickets SET status = ? WHERE id = ? AND status = ?",
@@ -141,13 +162,31 @@ def create_app(test_config=None):
         get_db().commit()
         if cursor.rowcount != 1:
             ticket = load_ticket(ticket_id)
-            return render_template(
-                "ticket_detail.html",
-                ticket=ticket,
-                next_status=NEXT_STATUS.get(ticket["status"]),
-                status_error=STATUS_ERROR,
-            ), 409
+            return render_ticket_detail(ticket, status_error=STATUS_ERROR), 409
 
+        return redirect(url_for("ticket_detail", ticket_id=ticket_id), code=303)
+
+    @app.post("/tickets/<int:ticket_id>/notes")
+    def ticket_note(ticket_id):
+        ticket = load_ticket(ticket_id)
+        note_body = request.form.get("body", "")
+        cleaned = note_body.strip()
+        if not cleaned:
+            return render_ticket_detail(
+                ticket, note_body=note_body, note_error="اكتب ملاحظة المعالجة."
+            ), 400
+        if len(cleaned) > NOTE_LIMIT:
+            return render_ticket_detail(
+                ticket,
+                note_body=note_body,
+                note_error="يجب ألا تتجاوز الملاحظة 1000 حرف.",
+            ), 400
+
+        get_db().execute(
+            "INSERT INTO ticket_notes (ticket_id, body, created_at) VALUES (?, ?, ?)",
+            (ticket_id, cleaned, datetime.now(timezone.utc).isoformat(timespec="seconds")),
+        )
+        get_db().commit()
         return redirect(url_for("ticket_detail", ticket_id=ticket_id), code=303)
 
     return app
