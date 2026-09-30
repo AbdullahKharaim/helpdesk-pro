@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from flask import Flask, abort, g, redirect, render_template, request, url_for
 
@@ -10,10 +10,17 @@ FIELD_LIMITS = {"title": 120, "description": 2000, "requester_name": 80}
 NOTE_LIMIT = 1000
 NEXT_STATUS = {"جديد": "قيد المعالجة", "قيد المعالجة": "تم الحل"}
 STATUS_ERROR = "انتقال الحالة غير متاح."
+SAUDI_TIMEZONE = timezone(timedelta(hours=3))
+
+
+def saudi_time(value):
+    """Format a stored UTC timestamp for display in Saudi time only."""
+    return datetime.fromisoformat(value).astimezone(SAUDI_TIMEZONE).strftime("%Y-%m-%d %H:%M")
 
 
 def create_app(test_config=None):
     app = Flask(__name__)
+    app.jinja_env.filters["saudi_time"] = saudi_time
     app.config.from_mapping(DATABASE=os.path.join(app.instance_path, "helpdesk.sqlite3"))
     if test_config:
         app.config.update(test_config)

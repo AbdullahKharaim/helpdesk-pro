@@ -8,7 +8,7 @@
     <dt>التصنيف</dt><dd>{{ ticket.category }}</dd>
     <dt>اسم مقدم الطلب التجريبي</dt><dd>{{ ticket.requester_name }}</dd>
     <dt>الحالة</dt><dd>{{ ticket.status }}</dd>
-    <dt>تاريخ الإنشاء (UTC)</dt><dd>{{ ticket.created_at }}</dd>
+    <dt>وقت الإنشاء (بتوقيت السعودية)</dt><dd><time datetime="{{ ticket.created_at }}" dir="ltr">{{ ticket.created_at | saudi_time }}</time></dd>
   </dl>
   {% if status_error %}<p class="error" role="alert">{{ status_error }}</p>{% endif %}
   {% if next_status %}
@@ -29,7 +29,7 @@
       <ol>
       {% for note in notes %}
         <li>
-          <p>ملاحظة رقم {{ note.id }} — <time datetime="{{ note.created_at }}">{{ note.created_at }} (UTC)</time></p>
+          <p>ملاحظة رقم {{ note.id }} — <time datetime="{{ note.created_at }}" dir="ltr">{{ note.created_at | saudi_time }}</time> (بتوقيت السعودية)</p>
           <p class="description">{{ note.body }}</p>
         </li>
       {% endfor %}

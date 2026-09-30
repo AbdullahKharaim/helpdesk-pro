@@ -6,7 +6,7 @@
   {% if tickets %}
     <div class="table-wrap">
       <table>
-        <thead><tr><th>رقم البلاغ</th><th>العنوان</th><th>التصنيف</th><th>مقدم الطلب التجريبي</th><th>الحالة</th><th>تاريخ الإنشاء (UTC)</th></tr></thead>
+        <thead><tr><th>رقم البلاغ</th><th>العنوان</th><th>التصنيف</th><th>مقدم الطلب التجريبي</th><th>الحالة</th><th>وقت الإنشاء (بتوقيت السعودية)</th></tr></thead>
         <tbody>
         {% for ticket in tickets %}
           <tr>
@@ -15,7 +15,7 @@
             <td>{{ ticket.category }}</td>
             <td>{{ ticket.requester_name }}</td>
             <td>{{ ticket.status }}</td>
-            <td>{{ ticket.created_at }}</td>
+            <td><time datetime="{{ ticket.created_at }}" dir="ltr">{{ ticket.created_at | saudi_time }}</time></td>
           </tr>
         {% endfor %}
         </tbody>

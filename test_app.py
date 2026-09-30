@@ -3,8 +3,9 @@ import sqlite3
 import tempfile
 import unittest
 from contextlib import closing
+from html.parser import HTMLParser
 
-from app import create_app
+from app import create_app, saudi_time
 
 
 VALID_TICKET = {
@@ -13,6 +14,28 @@ VALID_TICKET = {
     "category": "أجهزة",
     "requester_name": "مستخدم تجريبي",
 }
+
+
+class TimeParser(HTMLParser):
+    def __init__(self, page):
+        super().__init__()
+        self.times = []
+        self.current_time = None
+        self.feed(page)
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "time":
+            self.current_time = (dict(attrs), "")
+
+    def handle_data(self, data):
+        if self.current_time is not None:
+            attrs, value = self.current_time
+            self.current_time = (attrs, value + data)
+
+    def handle_endtag(self, tag):
+        if tag == "time":
+            self.times.append(self.current_time)
+            self.current_time = None
 
 
 class TicketTests(unittest.TestCase):
@@ -35,6 +58,82 @@ class TicketTests(unittest.TestCase):
         response = self.client.post("/tickets/new", data=VALID_TICKET)
         self.assertEqual(response.status_code, 302)
         return response.headers["Location"]
+
+    def test_saudi_time_crosses_midnight(self):
+        cases = (
+            ("2026-09-30T20:59:59+00:00", "2026-09-30 23:59"),
+            ("2026-09-30T21:00:00+00:00", "2026-10-01 00:00"),
+            ("2026-12-31T23:45:17+00:00", "2027-01-01 02:45"),
+            ("2028-02-28T22:15:00+00:00", "2028-02-29 01:15"),
+        )
+        for stored, expected in cases:
+            with self.subTest(stored=stored):
+                self.assertEqual(saudi_time(stored), expected)
+
+    def test_saudi_time_display_preserves_existing_data_and_order(self):
+        first_ticket = self.create_ticket()
+        second_ticket = self.create_ticket()
+        ticket_time = "2026-09-30T23:45:17+00:00"
+        second_ticket_time = "2026-09-30T20:00:00+00:00"
+        note_time = "2026-09-30T21:05:59+00:00"
+        earlier_note_time = "2026-09-30T20:59:00+00:00"
+        with closing(sqlite3.connect(self.database)) as db:
+            db.execute("UPDATE tickets SET created_at = ? WHERE id = 1", (ticket_time,))
+            db.execute("UPDATE tickets SET created_at = ? WHERE id = 2", (second_ticket_time,))
+            db.executemany(
+                "INSERT INTO ticket_notes (ticket_id, body, created_at) VALUES (1, ?, ?)",
+                (
+                    ("ملاحظة بعد منتصف الليل", note_time),
+                    ("ملاحظة قبل منتصف الليل", earlier_note_time),
+                    ("ملاحظة بنفس الوقت", note_time),
+                ),
+            )
+            db.commit()
+            tickets_before = db.execute("SELECT * FROM tickets ORDER BY id").fetchall()
+            notes_before = db.execute("SELECT * FROM ticket_notes ORDER BY id").fetchall()
+
+        reopened = create_app({"TESTING": True, "DATABASE": self.database})
+        client = reopened.test_client()
+        listing = client.get("/")
+        detail = client.get(first_ticket)
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(detail.status_code, 200)
+        listing_page = listing.get_data(as_text=True)
+        detail_page = detail.get_data(as_text=True)
+
+        for page, expected_times in (
+            (listing_page, (
+                (second_ticket_time, "2026-09-30 23:00"),
+                (ticket_time, "2026-10-01 02:45"),
+            )),
+            (detail_page, (
+                (ticket_time, "2026-10-01 02:45"),
+                (earlier_note_time, "2026-09-30 23:59"),
+                (note_time, "2026-10-01 00:05"),
+                (note_time, "2026-10-01 00:05"),
+            )),
+        ):
+            with self.subTest(page="listing" if page == listing_page else "detail"):
+                times = TimeParser(page).times
+                self.assertEqual(
+                    [(attrs.get("datetime"), value) for attrs, value in times],
+                    list(expected_times),
+                )
+                self.assertTrue(all(attrs.get("dir") == "ltr" for attrs, _ in times))
+                self.assertIn("بتوقيت السعودية", page)
+
+        self.assertLess(listing_page.index(second_ticket), listing_page.index(first_ticket))
+        note_positions = [detail_page.index(body) for body in (
+            "ملاحظة قبل منتصف الليل", "ملاحظة بعد منتصف الليل", "ملاحظة بنفس الوقت"
+        )]
+        self.assertEqual(note_positions, sorted(note_positions))
+        with closing(sqlite3.connect(self.database)) as db:
+            self.assertEqual(
+                db.execute("SELECT * FROM tickets ORDER BY id").fetchall(), tickets_before
+            )
+            self.assertEqual(
+                db.execute("SELECT * FROM ticket_notes ORDER BY id").fetchall(), notes_before
+            )
 
     def test_create_and_reopen(self):
         empty = self.client.get("/")
