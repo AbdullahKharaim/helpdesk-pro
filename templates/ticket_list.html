@@ -1,26 +1,32 @@
 {% extends "base.html" %}
+{% from "_macros.html" import status_badge %}
+{% set active_page = "list" %}
 {% block title %}البلاغات — HelpDesk Pro{% endblock %}
 {% block content %}
-  <h1>البلاغات</h1>
-  <a class="button" href="{{ url_for('ticket_new') }}">بلاغ جديد</a>
-  {% if tickets %}
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>رقم البلاغ</th><th>العنوان</th><th>التصنيف</th><th>مقدم الطلب التجريبي</th><th>الحالة</th><th>وقت الإنشاء (بتوقيت السعودية)</th></tr></thead>
-        <tbody>
-        {% for ticket in tickets %}
-          <tr>
-            <td>{{ ticket.id }}</td>
-            <td><a href="{{ url_for('ticket_detail', ticket_id=ticket.id) }}">{{ ticket.title }}</a></td>
-            <td>{{ ticket.category }}</td>
-            <td>{{ ticket.requester_name }}</td>
-            <td>{{ ticket.status }}</td>
-            <td><time datetime="{{ ticket.created_at }}" dir="ltr">{{ ticket.created_at | saudi_time }}</time></td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
+  <div class="page-head">
+    <div>
+      <h1>البلاغات</h1>
+      <p class="lead">الأحدث أولًا. الأوقات بتوقيت السعودية (UTC+03:00).</p>
     </div>
+    <a class="button" href="{{ url_for('ticket_new') }}">بلاغ جديد</a>
+  </div>
+  {% if tickets %}
+    <ul class="ticket-list">
+    {% for ticket in tickets %}
+      <li class="ticket-card">
+        <div class="ticket-card__head">
+          <p class="ticket-number">بلاغ رقم {{ ticket.id }}</p>
+          <h2 class="ticket-title"><a href="{{ url_for('ticket_detail', ticket_id=ticket.id) }}">{{ ticket.title }}</a></h2>
+        </div>
+        <p><span class="visually-hidden">الحالة: </span>{{ status_badge(ticket.status) }}</p>
+        <dl class="ticket-meta">
+          <div><dt>التصنيف</dt><dd>{{ ticket.category }}</dd></div>
+          <div><dt>مقدم الطلب التجريبي</dt><dd>{{ ticket.requester_name }}</dd></div>
+          <div><dt>وقت الإنشاء</dt><dd><time datetime="{{ ticket.created_at }}" dir="ltr">{{ ticket.created_at | saudi_time }}</time></dd></div>
+        </dl>
+      </li>
+    {% endfor %}
+    </ul>
   {% else %}
     <p class="empty">لا توجد بلاغات حتى الآن. أنشئ أول بلاغ تجريبي للبدء.</p>
   {% endif %}

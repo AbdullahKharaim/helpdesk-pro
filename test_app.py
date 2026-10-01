@@ -1,11 +1,15 @@
+import importlib
 import os
 import sqlite3
 import tempfile
 import unittest
 from contextlib import closing
 from html.parser import HTMLParser
+from unittest.mock import patch
 
-from app import create_app, saudi_time
+# Fail before opening any database if import-time initialization returns.
+with patch("sqlite3.connect", side_effect=AssertionError("Importing app must not open a database")):
+    from app import create_app, saudi_time
 
 
 VALID_TICKET = {
@@ -36,6 +40,16 @@ class TimeParser(HTMLParser):
         if tag == "time":
             self.times.append(self.current_time)
             self.current_time = None
+
+
+class ImportIsolationTests(unittest.TestCase):
+    def test_import_does_not_open_database(self):
+        with patch(
+            "sqlite3.connect",
+            side_effect=AssertionError("Importing app must not open a database"),
+        ) as connect:
+            importlib.reload(importlib.import_module("app"))
+        connect.assert_not_called()
 
 
 class TicketTests(unittest.TestCase):

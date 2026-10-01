@@ -1,0 +1,17 @@
+{# Display helpers only: status text is always shown, and each status has its own icon shape. #}
+{% macro status_badge(status) %}
+  {%- set kind = {"جديد": "new", "قيد المعالجة": "progress", "تم الحل": "solved"}.get(status, "other") -%}
+  <span class="badge badge--{{ kind }}">
+    {%- if kind == "new" -%}
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+    {%- elif kind == "progress" -%}
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg>
+    {%- elif kind == "solved" -%}
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 8.5l3.2 3.2L13 4.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    {%- endif -%}
+    {{ status }}</span>
+{%- endmacro %}
+
+{% macro error_message(id, message, alert=false) %}
+  <p class="error" id="{{ id }}"{% if alert %} role="alert"{% endif %}><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 4.2v4.6M8 11.2v.4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg><span>{{ message }}</span></p>
+{%- endmacro %}

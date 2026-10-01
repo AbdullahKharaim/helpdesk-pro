@@ -1,33 +1,56 @@
 {% extends "base.html" %}
+{% from "_macros.html" import error_message %}
+{% set active_page = "new" %}
 {% block title %}إنشاء بلاغ — HelpDesk Pro{% endblock %}
 {% block content %}
-  <h1>إنشاء بلاغ</h1>
-  <p>استخدم بيانات تجريبية خيالية فقط.</p>
-  <form method="post" novalidate>
-    <div class="field">
+  <div class="page-head">
+    <div>
+      <h1>إنشاء بلاغ</h1>
+      <p class="lead">استخدم بيانات تجريبية خيالية فقط. جميع الحقول مطلوبة.</p>
+    </div>
+  </div>
+  <form class="card form-card" method="post" novalidate>
+    {% if errors %}
+      <div class="form-alert" role="alert">
+        <h2>تعذّر حفظ البلاغ. صحّح ما يلي:</h2>
+        <ul>
+          {% for field, message in errors.items() %}<li><a href="#{{ field }}">{{ message }}</a></li>{% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    <div class="field{% if errors.title %} field--error{% endif %}">
       <label for="title">العنوان</label>
-      <input id="title" name="title" value="{{ values.title }}" maxlength="120" aria-invalid="{{ 'true' if errors.title else 'false' }}"{% if errors.title %} aria-describedby="title-error"{% endif %}>
-      {% if errors.title %}<p class="error" id="title-error">{{ errors.title }}</p>{% endif %}
+      <p class="hint" id="title-hint">حتى 120 حرفًا.</p>
+      {% if errors.title %}{{ error_message("title-error", errors.title) }}{% endif %}
+      <input id="title" name="title" value="{{ values.title }}" maxlength="120" aria-invalid="{{ 'true' if errors.title else 'false' }}" aria-describedby="title-hint{% if errors.title %} title-error{% endif %}">
     </div>
-    <div class="field">
+    <div class="field{% if errors.description %} field--error{% endif %}">
       <label for="description">الوصف</label>
-      <textarea id="description" name="description" maxlength="2000" aria-invalid="{{ 'true' if errors.description else 'false' }}"{% if errors.description %} aria-describedby="description-error"{% endif %}>{{ values.description }}</textarea>
-      {% if errors.description %}<p class="error" id="description-error">{{ errors.description }}</p>{% endif %}
+      <p class="hint" id="description-hint">صف المشكلة وما جُرّب حتى الآن، حتى 2000 حرف.</p>
+      {% if errors.description %}{{ error_message("description-error", errors.description) }}{% endif %}
+      <textarea id="description" name="description" maxlength="2000" aria-invalid="{{ 'true' if errors.description else 'false' }}" aria-describedby="description-hint{% if errors.description %} description-error{% endif %}">{{ values.description }}</textarea>
     </div>
-    <div class="field">
-      <label for="category">التصنيف</label>
-      <select id="category" name="category" aria-invalid="{{ 'true' if errors.category else 'false' }}"{% if errors.category %} aria-describedby="category-error"{% endif %}>
-        <option value=""{% if not values.category %} selected{% endif %}>اختر تصنيفًا</option>
-        {% if values.category and values.category.strip() not in categories %}<option value="{{ values.category }}" selected>قيمة غير معتمدة: {{ values.category }}</option>{% endif %}
-        {% for category in categories %}<option value="{{ category }}"{% if values.category.strip() == category %} selected{% endif %}>{{ category }}</option>{% endfor %}
-      </select>
-      {% if errors.category %}<p class="error" id="category-error">{{ errors.category }}</p>{% endif %}
+    <div class="field-row">
+      <div class="field{% if errors.category %} field--error{% endif %}">
+        <label for="category">التصنيف</label>
+        <p class="hint" id="category-hint">تصنيف واحد من القائمة.</p>
+        {% if errors.category %}{{ error_message("category-error", errors.category) }}{% endif %}
+        <select id="category" name="category" aria-invalid="{{ 'true' if errors.category else 'false' }}" aria-describedby="category-hint{% if errors.category %} category-error{% endif %}">
+          <option value=""{% if not values.category %} selected{% endif %}>اختر تصنيفًا</option>
+          {% if values.category and values.category.strip() not in categories %}<option value="{{ values.category }}" selected>قيمة غير معتمدة: {{ values.category }}</option>{% endif %}
+          {% for category in categories %}<option value="{{ category }}"{% if values.category.strip() == category %} selected{% endif %}>{{ category }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field{% if errors.requester_name %} field--error{% endif %}">
+        <label for="requester_name">اسم مقدم الطلب التجريبي</label>
+        <p class="hint" id="requester-name-hint">اسم خيالي، حتى 80 حرفًا.</p>
+        {% if errors.requester_name %}{{ error_message("requester-name-error", errors.requester_name) }}{% endif %}
+        <input id="requester_name" name="requester_name" value="{{ values.requester_name }}" maxlength="80" aria-invalid="{{ 'true' if errors.requester_name else 'false' }}" aria-describedby="requester-name-hint{% if errors.requester_name %} requester-name-error{% endif %}">
+      </div>
     </div>
-    <div class="field">
-      <label for="requester_name">اسم مقدم الطلب التجريبي</label>
-      <input id="requester_name" name="requester_name" value="{{ values.requester_name }}" maxlength="80" aria-invalid="{{ 'true' if errors.requester_name else 'false' }}"{% if errors.requester_name %} aria-describedby="requester-name-error"{% endif %}>
-      {% if errors.requester_name %}<p class="error" id="requester-name-error">{{ errors.requester_name }}</p>{% endif %}
+    <div class="actions">
+      <button type="submit">حفظ البلاغ</button>
+      <a class="button button--secondary" href="{{ url_for('ticket_list') }}">إلغاء</a>
     </div>
-    <div class="actions"><button type="submit">حفظ البلاغ</button><a href="{{ url_for('ticket_list') }}">إلغاء</a></div>
   </form>
 {% endblock %}

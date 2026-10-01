@@ -1,42 +1,70 @@
 {% extends "base.html" %}
+{% from "_macros.html" import status_badge, error_message %}
 {% block title %}بلاغ رقم {{ ticket.id }} — HelpDesk Pro{% endblock %}
 {% block content %}
-  <h1>بلاغ رقم {{ ticket.id }}</h1>
-  <dl>
-    <dt>العنوان</dt><dd>{{ ticket.title }}</dd>
-    <dt>الوصف</dt><dd class="description">{{ ticket.description }}</dd>
-    <dt>التصنيف</dt><dd>{{ ticket.category }}</dd>
-    <dt>اسم مقدم الطلب التجريبي</dt><dd>{{ ticket.requester_name }}</dd>
-    <dt>الحالة</dt><dd>{{ ticket.status }}</dd>
-    <dt>وقت الإنشاء (بتوقيت السعودية)</dt><dd><time datetime="{{ ticket.created_at }}" dir="ltr">{{ ticket.created_at | saudi_time }}</time></dd>
-  </dl>
-  {% if status_error %}<p class="error" role="alert">{{ status_error }}</p>{% endif %}
-  {% if next_status %}
-    <form method="post" action="{{ url_for('ticket_status', ticket_id=ticket.id) }}">
-      <input type="hidden" name="next_status" value="{{ next_status }}">
-      <button type="submit">الانتقال إلى {{ next_status }}</button>
-    </form>
-  {% endif %}
-  <section aria-labelledby="notes-heading">
-    <h2 id="notes-heading">ملاحظات المعالجة</h2>
-    <form method="post" action="{{ url_for('ticket_note', ticket_id=ticket.id) }}" novalidate>
-      <label for="note-body">ملاحظة جديدة</label>
-      <textarea id="note-body" name="body" maxlength="1000" aria-invalid="{{ 'true' if note_error else 'false' }}"{% if note_error %} aria-describedby="note-error"{% endif %}>{{ note_body }}</textarea>
-      {% if note_error %}<p class="error" id="note-error" role="alert">{{ note_error }}</p>{% endif %}
-      <button type="submit">حفظ الملاحظة</button>
-    </form>
+  <a class="back-link" href="{{ url_for('ticket_list') }}"><span aria-hidden="true">→</span> العودة إلى البلاغات</a>
+
+  <section class="card ticket-header" aria-labelledby="ticket-heading">
+    <h1 id="ticket-heading" class="ticket-header__title">
+      <span class="ticket-number">بلاغ رقم {{ ticket.id }}</span>
+      <span>{{ ticket.title }}</span>
+    </h1>
+    <dl class="ticket-header__meta">
+      <div><dt>الحالة</dt><dd>{{ status_badge(ticket.status) }}</dd></div>
+      <div><dt>وقت الإنشاء (بتوقيت السعودية)</dt><dd><time datetime="{{ ticket.created_at }}" dir="ltr">{{ ticket.created_at | saudi_time }}</time></dd></div>
+    </dl>
+  </section>
+
+  <section class="card" aria-labelledby="details-heading">
+    <h2 id="details-heading" class="card__head">بيانات البلاغ</h2>
+    <dl class="details">
+      <div class="details__wide"><dt>الوصف</dt><dd class="prewrap">{{ ticket.description }}</dd></div>
+      <div><dt>التصنيف</dt><dd>{{ ticket.category }}</dd></div>
+      <div><dt>اسم مقدم الطلب التجريبي</dt><dd>{{ ticket.requester_name }}</dd></div>
+    </dl>
+  </section>
+
+  <section class="card status-panel" aria-labelledby="status-heading">
+    <h2 id="status-heading" class="card__head">تغيير الحالة</h2>
+    {% if status_error %}{{ error_message("status-error", status_error, alert=true) }}{% endif %}
+    {% if next_status %}
+      <p class="muted">تنتقل الحالة خطوة واحدة في كل مرة.</p>
+      <form method="post" action="{{ url_for('ticket_status', ticket_id=ticket.id) }}">
+        <input type="hidden" name="next_status" value="{{ next_status }}">
+        <button type="submit">الانتقال إلى {{ next_status }}</button>
+      </form>
+    {% else %}
+      <p class="muted">اكتملت معالجة هذا البلاغ، ولا يوجد انتقال آخر. يمكن إضافة ملاحظات معالجة.</p>
+    {% endif %}
+  </section>
+
+  <section class="card" aria-labelledby="notes-heading">
+    <div class="card__head">
+      <h2 id="notes-heading">ملاحظات المعالجة</h2>
+      <p class="muted">من الأقدم إلى الأحدث، والأوقات بتوقيت السعودية.</p>
+    </div>
     {% if notes %}
-      <ol>
+      <ol class="timeline">
       {% for note in notes %}
-        <li>
-          <p>ملاحظة رقم {{ note.id }} — <time datetime="{{ note.created_at }}" dir="ltr">{{ note.created_at | saudi_time }}</time> (بتوقيت السعودية)</p>
-          <p class="description">{{ note.body }}</p>
+        <li class="note">
+          <p class="note__head"><span class="note__id">ملاحظة رقم {{ note.id }}</span> <time datetime="{{ note.created_at }}" dir="ltr">{{ note.created_at | saudi_time }}</time></p>
+          <p class="note__body prewrap">{{ note.body }}</p>
         </li>
       {% endfor %}
       </ol>
     {% else %}
-      <p>لا توجد ملاحظات معالجة بعد.</p>
+      <p class="empty">لا توجد ملاحظات معالجة بعد.</p>
     {% endif %}
+    <form class="note-form" method="post" action="{{ url_for('ticket_note', ticket_id=ticket.id) }}" novalidate>
+      <div class="field{% if note_error %} field--error{% endif %}">
+        <label for="note-body">إضافة ملاحظة معالجة</label>
+        <p class="hint" id="note-hint">حتى 1000 حرف.</p>
+        {% if note_error %}{{ error_message("note-error", note_error, alert=true) }}{% endif %}
+        <textarea id="note-body" name="body" maxlength="1000" aria-invalid="{{ 'true' if note_error else 'false' }}" aria-describedby="note-hint{% if note_error %} note-error{% endif %}"{% if note_error %} autofocus{% endif %}>{{ note_body }}</textarea>
+      </div>
+      <div class="actions">
+        <button type="submit">حفظ الملاحظة</button>
+      </div>
+    </form>
   </section>
-  <p><a href="{{ url_for('ticket_list') }}">العودة إلى البلاغات</a></p>
 {% endblock %}
