@@ -4,6 +4,8 @@
 
 > العرض مشترك ودون حسابات: أي زائر يستطيع إنشاء البلاغات وتغيير حالاتها وإضافة الملاحظات. تظهر هذه الملاحظة داخل الواجهة في كل صفحة. لا يصلح لبيانات حقيقية.
 
+**حالة النشر — 2026-10-02:** العرض متاح على [Live Demo](https://abdullahkharaim.pythonanywhere.com/). أفاد Claude بنجاح النشر وHTTPS وCSS ودورة بلاغ مع ملاحظة وحفظ البيانات وفحص الواجهة؛ التفاصيل في [README](README.md#نقطة-التوقف-الحالية--2026-10-02). لم يُعد Codex تجربة الموقع، ولم تُختبر حدود الإرسال عليه؛ النتيجة ليست فحصًا أمنيًا شاملًا.
+
 استُخدمت في الإعداد التالي الوثائق الرسمية: [Flask على PythonAnywhere](https://help.pythonanywhere.com/pages/Flask/)، [متغيرات البيئة لتطبيقات الويب](https://help.pythonanywhere.com/pages/EnvironmentVariables/)، [فرض HTTPS](https://help.pythonanywhere.com/pages/ForcingHTTPS/)، [عنوان IP للزائر](https://help.pythonanywhere.com/pages/WebAppClientIPAddresses/)، [مزايا الحساب المجاني](https://help.pythonanywhere.com/pages/FreeAccountsFeatures/)، [إصدارات Python](https://help.pythonanywhere.com/pages/PythonVersions/)، ودليل Flask عن [أمان الكوكيز](https://flask.palletsprojects.com/en/stable/web-security/).
 
 ## متغيرات البيئة
@@ -87,6 +89,8 @@ application = create_app()
 4. إذا ظهر خطأ فراجع **Error log** من تبويب **Web**. غياب المفتاح أو مسار القاعدة يظهر فيه برسالة واضحة، ويرفض التطبيق البدء.
 
 ## التجديد الشهري
+
+موعد التعطيل الظاهر في الحساب بحسب تقرير Claude بتاريخ 2026-10-02: **2 نوفمبر 2026** ما لم يُجدد. يلزم تجديد التطبيق قبل هذا الموعد؛ هذه الجلسة وثّقت النتيجة ولم تغيّر إعدادات الاستضافة أو تنفّذ التجديد.
 
 تطبيق الويب في الحساب المجاني يتوقف إذا لم يُجدَّد شهريًا. قبل انتهاء المدة سجّل الدخول، وافتح تبويب **Web**، واضغط **Run until 1 month from today**. يصل تذكير بالبريد قبل الانتهاء، ويمكن إعادة التشغيل من الزر نفسه إذا توقف التطبيق. لاحظ أيضًا حدود الحساب المجاني: تطبيق ويب واحد بعامل واحد، ومساحة 512 ميغابايت.
 
