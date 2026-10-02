@@ -1,33 +1,64 @@
 {% extends "base.html" %}
-{% from "_macros.html" import status_badge %}
+{% from "_macros.html" import status_badge, icon, status_kinds %}
 {% set active_page = "list" %}
 {% block title %}البلاغات — HelpDesk Pro{% endblock %}
-{% block content %}
+{% block hero %}
   <div class="page-head">
-    <div>
+    <div class="page-head__text">
+      <p class="eyebrow">مكتب الدعم الفني</p>
       <h1>البلاغات</h1>
       <p class="lead">الأحدث أولًا. الأوقات بتوقيت السعودية (UTC+03:00).</p>
     </div>
-    <a class="button" href="{{ url_for('ticket_new') }}">بلاغ جديد</a>
+    <a class="button button--accent" href="{{ url_for('ticket_new') }}">{{ icon("plus") }}<span>بلاغ جديد</span></a>
   </div>
+{% endblock %}
+{% block content %}
   {% if tickets %}
     <ul class="ticket-list">
     {% for ticket in tickets %}
-      <li class="ticket-card">
-        <div class="ticket-card__head">
-          <p class="ticket-number">بلاغ رقم {{ ticket.id }}</p>
-          <h2 class="ticket-title"><a href="{{ url_for('ticket_detail', ticket_id=ticket.id) }}">{{ ticket.title }}</a></h2>
+      {% set kind = status_kinds.get(ticket.status, "other") %}
+      <li class="ticket-card ticket-card--{{ kind }}">
+        <p class="ticket-number">بلاغ رقم {{ ticket.id }}</p>
+        <h2 class="ticket-title"><a href="{{ url_for('ticket_detail', ticket_id=ticket.id) }}">{{ ticket.title }}</a></h2>
+        <p class="ticket-card__status"><span class="visually-hidden">الحالة: </span>{{ status_badge(ticket.status) }}</p>
+        <div class="ticket-card__foot">
+          <dl class="ticket-meta">
+            <div><dt>{{ icon("tag") }}<span class="visually-hidden">التصنيف</span></dt><dd><span class="chip">{{ ticket.category }}</span></dd></div>
+            <div><dt>{{ icon("user") }}<span class="visually-hidden">مقدم الطلب التجريبي</span></dt><dd>{{ ticket.requester_name }}</dd></div>
+            <div><dt>{{ icon("clock") }}<span class="visually-hidden">وقت الإنشاء</span></dt><dd><time datetime="{{ ticket.created_at }}" dir="ltr">{{ ticket.created_at | saudi_time }}</time></dd></div>
+          </dl>
+          <p class="ticket-card__next">
+            {%- if kind == "new" -%}<span>الخطوة التالية: بدء المعالجة</span>{{ icon("chevron") }}
+            {%- elif kind == "progress" -%}<span>الخطوة التالية: تأكيد الحل</span>{{ icon("chevron") }}
+            {%- elif kind == "solved" -%}{{ icon("check") }}<span>مكتمل، لا إجراء آخر</span>
+            {%- else -%}<span>عرض التفاصيل</span>{{ icon("chevron") }}
+            {%- endif -%}
+          </p>
         </div>
-        <p><span class="visually-hidden">الحالة: </span>{{ status_badge(ticket.status) }}</p>
-        <dl class="ticket-meta">
-          <div><dt>التصنيف</dt><dd>{{ ticket.category }}</dd></div>
-          <div><dt>مقدم الطلب التجريبي</dt><dd>{{ ticket.requester_name }}</dd></div>
-          <div><dt>وقت الإنشاء</dt><dd><time datetime="{{ ticket.created_at }}" dir="ltr">{{ ticket.created_at | saudi_time }}</time></dd></div>
-        </dl>
       </li>
     {% endfor %}
     </ul>
   {% else %}
-    <p class="empty">لا توجد بلاغات حتى الآن. أنشئ أول بلاغ تجريبي للبدء.</p>
+    <div class="empty-state">
+      <svg class="empty-state__art" viewBox="0 0 160 120" aria-hidden="true" focusable="false">
+        <circle cx="80" cy="64" r="52" fill="#e3f1ee"/>
+        <path d="M36 72l11-27a6 6 0 0 1 5.6-3.8h54.8a6 6 0 0 1 5.6 3.8L124 72v18a6 6 0 0 1-6 6H42a6 6 0 0 1-6-6z" fill="#fff" stroke="#0d6b63" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M36 72h25l5 9h28l5-9h25" fill="none" stroke="#0d6b63" stroke-width="3" stroke-linejoin="round"/>
+        <rect x="90" y="12" width="40" height="27" rx="9" fill="#f2b544"/>
+        <path d="M98 39l-1 8 9-8z" fill="#f2b544"/>
+        <path d="M102 25.5l5 4.5 9.5-9" fill="none" stroke="#0c2d31" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M40 24v9M35.5 28.5h9" stroke="#f2b544" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="138" cy="60" r="3.5" fill="#0d6b63" opacity=".35"/>
+        <circle cx="26" cy="54" r="2.5" fill="#0d6b63" opacity=".35"/>
+      </svg>
+      <h2 class="empty-state__title">لا توجد بلاغات حتى الآن</h2>
+      <p>أنشئ أول بلاغ تجريبي للبدء، ثم تابعه حتى يُحل.</p>
+      <ol class="steps">
+        <li>أنشئ بلاغًا ببيانات خيالية</li>
+        <li>انقل حالته خطوة بخطوة</li>
+        <li>وثّق المعالجة بالملاحظات</li>
+      </ol>
+      <a class="button" href="{{ url_for('ticket_new') }}">{{ icon("plus") }}<span>إنشاء أول بلاغ</span></a>
+    </div>
   {% endif %}
 {% endblock %}
