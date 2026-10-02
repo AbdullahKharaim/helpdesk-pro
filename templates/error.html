@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}{{ title }} — HelpDesk Pro{% endblock %}
+{% block hero %}
+  <div class="page-head">
+    <div class="page-head__text">
+      <p class="eyebrow">رمز الخطأ {{ code }}</p>
+      <h1>{{ title }}</h1>
+    </div>
+  </div>
+{% endblock %}
+{% block content %}
+  <div class="empty-state error-state">
+    <span class="icon-tile">{{ icon("info") }}</span>
+    <p>{{ message }}</p>
+    <a class="button" href="{{ url_for('ticket_list') }}">{{ icon("back") }}<span>العودة إلى البلاغات</span></a>
+  </div>
+{% endblock %}

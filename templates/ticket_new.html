@@ -14,6 +14,16 @@
 {% block content %}
   <div class="form-layout">
     <form class="card form-card" method="post" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% if form_error %}
+        <div class="form-alert" role="alert">
+          <svg class="form-alert__icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 4.2v4.6M8 11.2v.4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <div>
+            <h2>لم يُحفظ البلاغ</h2>
+            <p>{{ form_error }}</p>
+          </div>
+        </div>
+      {% endif %}
       {% if errors %}
         <div class="form-alert" role="alert">
           <svg class="form-alert__icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 4.2v4.6M8 11.2v.4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>

@@ -32,6 +32,7 @@
       {% if next_status %}
         <p class="muted">تنتقل الحالة خطوة واحدة في كل مرة.</p>
         <form class="status-panel__form" method="post" action="{{ url_for('ticket_status', ticket_id=ticket.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="next_status" value="{{ next_status }}">
           <button type="submit" class="button--block"><span>الانتقال إلى {{ next_status }}</span>{{ icon("forward") }}</button>
         </form>
@@ -78,11 +79,13 @@
         </div>
       {% endif %}
       <form class="note-form" method="post" action="{{ url_for('ticket_note', ticket_id=ticket.id) }}" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if note_form_error %}{{ error_message("note-form-error", note_form_error, alert=true) }}{% endif %}
         <div class="field{% if note_error %} field--error{% endif %}">
           <label for="note-body">إضافة ملاحظة معالجة</label>
           <p class="hint" id="note-hint">حتى 1000 حرف.</p>
           {% if note_error %}{{ error_message("note-error", note_error, alert=true) }}{% endif %}
-          <textarea id="note-body" name="body" maxlength="1000" aria-invalid="{{ 'true' if note_error else 'false' }}" aria-describedby="note-hint{% if note_error %} note-error{% endif %}"{% if note_error %} autofocus{% endif %}>{{ note_body }}</textarea>
+          <textarea id="note-body" name="body" maxlength="1000" aria-invalid="{{ 'true' if note_error else 'false' }}" aria-describedby="note-hint{% if note_error %} note-error{% endif %}"{% if note_error or note_form_error %} autofocus{% endif %}>{{ note_body }}</textarea>
         </div>
         <div class="actions">
           <button type="submit">{{ icon("check") }}<span>حفظ الملاحظة</span></button>
